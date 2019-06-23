@@ -1,6 +1,6 @@
-
+getwd()
 library(tidyverse)
-ds_raw <- data.table::fread('creditcard.csv')
+ds_raw <- data.table::fread('../creditcard.csv')
 glimpse(ds_raw)
 
 ds_raw <- select_all(ds_raw, tolower)
@@ -78,7 +78,7 @@ m0_proc_data %>%
   geom_point(aes(colour = prob)) + 
   scale_colour_gradientn('Probability', colours = RColorBrewer::brewer.pal(10, "RdYlGn") %>% rev) + 
   theme_bw() +
-  ggtitle(paste0('Undersampling Frequent Class: avg precision = ', round(m1_avg_precision, 4))) ->
+  ggtitle(paste0('Undersampling Frequent Class: avg precision = ', round(m0_avg_precision, 4))) ->
 m0_recall_chart
 
 m0_recall_chart
@@ -113,8 +113,6 @@ ds_raw
 ds_raw %>%
   group_by(class) %>%
   summarise_at(vars('down_sample_frequent_class', 'up_sample_infrequent_class'), sum)
-
-
 class
 
 # excellent now let's fit downsample model first
@@ -259,6 +257,28 @@ m2_recall_chart
 m1_avg_precision
 m2_avg_precision
 
+bind_rows(mutate(m0_proc_data, type = 'base'),
+ mutate(m1_proc_data, type = 'down_sample_frequent'),
+ mutate(m2_proc_data, type = 'up_sample_infrequent')) ->
+compare_curves_ds
+
+
+compare_curves_ds %>%
+  mutate(keep_cases = predicted %% 100) %>%
+  group_by(type, keep_cases) %>%
+  # sample_frac(0.1) %>%
+  ungroup %>%
+  mutate(type = factor(type)) %>%
+  ggplot(aes(x = recall, y = precision, colour = type)) +
+  # geom_point(aes(colour = prob), size = 0.5) + 
+  # geom_point() + 
+  geom_line() + 
+  # scale_colour_gradientn('Probability', colours = RColorBrewer::brewer.pal(10, "RdYlGn") %>% rev) + 
+  theme_bw() +
+  ggtitle(paste0('Undersampling Frequent Class: avg precision = ', round(m2_avg_precision, 4))) ->
+comparison_recall_chart
+
+comparison_recall_chart
 
 
 # compare models
