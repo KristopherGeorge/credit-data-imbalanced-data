@@ -274,35 +274,48 @@ compare_curves_ds %>%
   # geom_point() + 
   geom_line() + 
   # scale_colour_gradientn('Probability', colours = RColorBrewer::brewer.pal(10, "RdYlGn") %>% rev) + 
-  theme_bw() +
-  ggtitle(paste0('Undersampling Frequent Class: avg precision = ', round(m2_avg_precision, 4))) ->
+  theme_bw() ->
 comparison_recall_chart
 
 comparison_recall_chart
 
 
-# compare models
-m2_proc_data$avg_precision[20:30] == m1_proc_data$avg_precision[20:30]
-m0_proc_data$avg_precision[20:30]
+# let's add auc curvecs as well and see if there exist any differences!
 
-# interesting is that under or oversampling for logistic regression provides the same result which I wasn't expecting!
+glimpse(compare_curves_ds)
 
-bind_rows(tibble(model = 'base',
-                 prob = mod0_pred$prob,
-                 class = mod0_pred$class),
-          tibble(model = 'undersampliing',
-                 prob = mod1_pred$prob,
-                 class = mod1_pred$class),
-          tibble(model = 'oversampling',
-                 prob = mod2_pred$prob,
-                 class = mod2_pred$class)) ->
-comparing_model_scores
-
-
-glimpse(comparing_model_scores)
+compare_curves_ds %>%
+  group_by(type) %>%
+  arrange(type, desc(prob)) %>%
+  mutate(false_negative = 1 - class_nbr,
+         false_negative_cumulative = cumsum(false_negative),
+         false_negative_cum_rate = false_negative_cumulative/!!nbr_y0,
+         sensitivity = recall,
+         lag_false_neg_rate =  lag(false_negative_cum_rate),
+         lag_false_neg_rate = if_else(is.na(lag_false_neg_rate), 0, lag_false_neg_rate),
+         change_false_neg_rate = false_negative_cum_rate - lag_false_neg_rate,
+         avg_auc = change_false_neg_rate * sensitivity) %>%
+  ungroup ->
+compare_curves_ds
 
 
-comparing_model_scores %>%
-  ggplot(aes(x = prob, fill = model)) + 
-  geom_histogram() + 
-  facet_wrap(model ~ class, nrow = 3, scale = "free_y")
+compare_curves_ds %>%
+  group_by(type) %>%
+  summarise_at(vars("avg_auc", 'avg_precision'), sum)
+
+
+# very interesting though I know something is not right here! my auc is ridiculous!
+compare_curves_ds %>%
+  ggplot(aes(x = false_negative_cum_rate, y = sensitivity, colour = type)) +
+  # geom_point(aes(colour = prob), size = 0.5) + 
+  # geom_point() + 
+  geom_line() + 
+  # scale_colour_gradientn('Probability', colours = RColorBrewer::brewer.pal(10, "RdYlGn") %>% rev) + 
+  theme_bw() ->
+comparison_auc_chart
+
+comparison_auc_chart
+
+
+
+# note again AUC is identical for both frequent and infreqent model!
