@@ -631,3 +631,9 @@ comparison_auc_chart
 
 # no skill line is tot + / n i.e. the unconditional prob of observing the positive case! that's what a 
 # no skill model would be! always use unconditional prob
+
+# install.packages('pdp')
+library(pdp)
+
+partial(mod_samp_under, pred.data = ds_undersampled, pred.var = "lstat") 
+
